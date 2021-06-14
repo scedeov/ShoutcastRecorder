@@ -9,9 +9,9 @@ API_PLAYER = "http://directory.shoutcast.com/Player/"
 API_HOME = "http://directory.shoutcast.com/Home/"
 
 HOME_TOP_RADIOS = "Top"
-HOME_BROWSE_GENRE = "BrowseByGenre"
 PLAYER_STREAM_URL = "GetStreamUrl"
 PLAYER_TRACK_NAME = "GetCurrentTrack"
+BROWSE_BY_GENRE = "BrowseByGenre"
 
 AMSTERDAM_TRANCE = "1821355"
 
@@ -59,4 +59,21 @@ def get_content_url(station_id):
     return content_url
 
 
+# I need to make it so that headers are in only one place and only one session is used
+def get_stations(subgenre):
+    api = API_HOME + BROWSE_BY_GENRE
+    data = f"genrename={subgenre}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "Origin": "http://directory.shoutcast.com",
+        "Connection": "keep-alive",
+        "Referer": "http://directory.shoutcast.com/",
+    }
 
+    session = requests.Session()
+    r = session.post(api, data=data, headers=headers, timeout=5)
+    r.raise_for_status()
+    r = r.json()
+    stations = {key["ID"]: key["Name"] for key in r}
+    return stations
