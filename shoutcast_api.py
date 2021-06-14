@@ -15,16 +15,19 @@ BROWSE_BY_GENRE = "BrowseByGenre"
 
 AMSTERDAM_TRANCE = "1821355"
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "Origin": "http://directory.shoutcast.com",
+    "Connection": "keep-alive",
+    "Referer": "http://directory.shoutcast.com/",
+}
+
 
 def get_radio_info(station_id):
     api = API_PLAYER + PLAYER_TRACK_NAME
     data = {"stationID": station_id}
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    }
-
-    r = requests.post(api, data=data, headers=headers)
+    r = requests.post(api, data=data, headers=HEADERS)
     return r.json()
 
 
@@ -63,16 +66,9 @@ def get_content_url(station_id):
 def get_stations(subgenre):
     api = API_HOME + BROWSE_BY_GENRE
     data = f"genrename={subgenre}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "Origin": "http://directory.shoutcast.com",
-        "Connection": "keep-alive",
-        "Referer": "http://directory.shoutcast.com/",
-    }
 
     session = requests.Session()
-    r = session.post(api, data=data, headers=headers, timeout=5)
+    r = session.post(api, data=data, headers=HEADERS, timeout=5)
     r.raise_for_status()
     r = r.json()
     stations = {key["ID"]: key["Name"] for key in r}
