@@ -50,11 +50,16 @@ class Application(tk.Frame):
             else:
                 pass
 
+    def clear(self, event):
+        self.search_bar_var.set("")
+
     def create_widgets(self):
         self.label_search = tk.LabelFrame(self, text="Search")
         self.label_search.pack(pady=10)
+
         self.search_bar_var = tk.StringVar()
         self.search_bar_var.set("search for a radio station")
+
         self.search_bar = tk.Entry(
             self.label_search,
             textvariable=self.search_bar_var,
@@ -62,6 +67,7 @@ class Application(tk.Frame):
             borderwidth=10,
             relief=tk.FLAT,
         )
+        self.search_bar.bind("<Button-1>", self.clear)
         self.search_bar.pack(padx=10)
 
         self.label_filters = tk.LabelFrame(self.label_search, text="Filter by")
@@ -69,6 +75,7 @@ class Application(tk.Frame):
 
         self.genre_var = tk.StringVar(self)
         self.genre_var.set("Genre")
+
         self.genre_menu = tk.OptionMenu(
             self.label_filters,
             self.genre_var,
