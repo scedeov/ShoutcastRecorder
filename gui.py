@@ -1,18 +1,21 @@
 from tkinter import filedialog
 import tkinter as tk
 import json
+import os
+import requests
 
-import shoutcast_api
+import shoutcast_api as sapi
 
 
 class Application(tk.Frame):
-    def __init__(self, master=None):
+    def __init__(self, master=None, session=None):
         super().__init__(master)
         self.master = master
         self.master.geometry("400x500")
         self.genres = list(self.get_genres())
         self.subgenres = self.get_subgenres(self.genres[0])
         self.stations = {}
+        self.session = session
         self.master.resizable(0, 0)
         self.master.title("Radio Recorder for SHOUTcast")
         self.pack()
@@ -42,12 +45,12 @@ class Application(tk.Frame):
         return data[genre]
 
     def update_stations(self):
-        self.stations_list.delete(0, "end")
-        self.stations = shoutcast_api.get_stations(self.subgenre_var.get())
+        self.stations_listbox.delete(0, "end")
+        self.stations = sapi.get_stations(self.subgenre_var.get(), self.session)
         result = self.search_bar_var.get()
         for station in self.stations:
-            if result in self.stations[station] or result == "":
-                self.stations_list.insert(tk.END, self.stations[station])
+            if result in station or result == "":
+                self.stations_listbox.insert(tk.END, station)
             else:
                 pass
 
@@ -57,6 +60,26 @@ class Application(tk.Frame):
     def save_folder(self):
         self.directory = filedialog.askdirectory()
         print(self.directory)
+
+    def record(self):
+        station_name = self.stations_listbox.get(self.stations_listbox.curselection())
+        station_id = self.stations[station_name]
+        print(station_name, station_id)
+        content_url = sapi.get_content_url(station_id)
+        radio = sapi.get_radio_info(station_id)
+        radio_name = radio["Station"]["Name"]
+        listeners = radio["Station"]["Listeners"]
+
+        filename = self.directory + "/" + radio_name + sapi.EXT
+
+        r = self.session.get(content_url, stream=True)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, "wb") as f:
+            print("Recording... ")
+            print(f"Station: {radio_name}\nListeners: {listeners}")
+            print("Press Ctrl + C to stop.")
+            for chunk in r.iter_content(chunk_size=sapi.CHUNK_SIZE):
+                f.write(chunk)
 
     def create_widgets(self):
         self.label_search = tk.LabelFrame(self, text="Search")
@@ -85,7 +108,7 @@ class Application(tk.Frame):
             self.label_filters,
             self.genre_var,
             *self.genres,
-            command=lambda _: self.update_subgenres(self.genre_var.get())
+            command=lambda _: self.update_subgenres(self.genre_var.get()),
         )
         self.genre_menu.pack(side=tk.LEFT)
 
@@ -105,13 +128,13 @@ class Application(tk.Frame):
         self.stations_frame = tk.LabelFrame(self, text="Radio Stations")
         self.stations_frame.pack()
 
-        self.stations_list = tk.Listbox(
+        self.stations_listbox = tk.Listbox(
             self.stations_frame, width=54, borderwidth=10, relief=tk.FLAT
         )
 
-        self.stations_list.pack()
+        self.stations_listbox.pack()
 
-        self.record_btn = tk.Button(self, text="Record")
+        self.record_btn = tk.Button(self, text="Record", command=self.record)
         self.record_btn.pack(side=tk.LEFT, pady=10)
 
         self.save = tk.Button(self, text="Select Save Folder", command=self.save_folder)
@@ -120,5 +143,7 @@ class Application(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = Application(master=root)
-    app.mainloop()
+    with requests.Session() as session:
+        session.get("http://directory.shoutcast.com")
+        app = Application(master=root, session=session)
+        app.mainloop()

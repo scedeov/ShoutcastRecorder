@@ -10,4 +10,4 @@ class Radio:
         self.listeners = response.get("Listeners")
         self.genre = response.get("Genre")
         self.current_track = response.get("CurrentTrack")
-    
+        self.bitrate = response.get("Bitrate")

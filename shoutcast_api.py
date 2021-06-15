@@ -1,5 +1,5 @@
 import os
-
+from radio import Radio
 import requests
 
 CHUNK_SIZE = 256
@@ -63,13 +63,11 @@ def get_content_url(station_id):
 
 
 # I need to make it so that headers are in only one place and only one session is used
-def get_stations(subgenre):
+def get_stations(subgenre, session):
     api = API_HOME + BROWSE_BY_GENRE
     data = f"genrename={subgenre}"
-
-    session = requests.Session()
     r = session.post(api, data=data, headers=HEADERS, timeout=5)
     r.raise_for_status()
     r = r.json()
-    stations = {key["ID"]: key["Name"] for key in r}
+    stations = {radio["Name"]: radio["ID"] for radio in r}
     return stations
