@@ -1,6 +1,7 @@
+from tkinter import filedialog
 import tkinter as tk
 import json
-from tkinter.constants import END
+
 import shoutcast_api
 
 
@@ -52,6 +53,10 @@ class Application(tk.Frame):
 
     def clear(self, event):
         self.search_bar_var.set("")
+
+    def save_folder(self):
+        self.directory = filedialog.askdirectory()
+        print(self.directory)
 
     def create_widgets(self):
         self.label_search = tk.LabelFrame(self, text="Search")
@@ -109,8 +114,8 @@ class Application(tk.Frame):
         self.record_btn = tk.Button(self, text="Record")
         self.record_btn.pack(side=tk.LEFT, pady=10)
 
-        self.play_btn = tk.Button(self, text="Select Save Folder")
-        self.play_btn.pack(side=tk.RIGHT, pady=10)
+        self.save = tk.Button(self, text="Select Save Folder", command=self.save_folder)
+        self.save.pack(side=tk.RIGHT, pady=10)
 
 
 if __name__ == "__main__":
