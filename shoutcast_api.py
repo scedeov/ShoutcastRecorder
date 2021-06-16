@@ -1,3 +1,4 @@
+import logging
 import os
 from radio import Radio
 import requests
@@ -14,7 +15,7 @@ PLAYER_STREAM_URL = "GetStreamUrl"
 PLAYER_TRACK_NAME = "GetCurrentTrack"
 BROWSE_BY_GENRE = "BrowseByGenre"
 
-AMSTERDAM_TRANCE = "1821355"
+ERROR_URL = r"\u003cError requesting url for station\u003e"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
@@ -47,7 +48,7 @@ def get_song_name(station_id):
     return song_name
 
 
-def get_content_url(station_id):
+def get_content_url(station_id, session):
     api = API_PLAYER + PLAYER_STREAM_URL
     data = f"station={station_id}"
     headers = {
@@ -57,18 +58,20 @@ def get_content_url(station_id):
         "Content-Length": "15",
     }
 
-    r = requests.post(api, data=data, headers=headers)
-
+    r = session.post(api, data=data, headers=headers)
+    r.raise_for_status()
     content_url = r.text.strip('"')
     return content_url
 
 
 # I need to make it so that headers are in only one place and only one session is used
 def get_stations(subgenre, session):
+    logging.info("Getting stations from API")
     api = API_HOME + BROWSE_BY_GENRE
     data = f"genrename={subgenre}"
     r = session.post(api, data=data, headers=HEADERS, timeout=5)
     r.raise_for_status()
+    logging.info("Got stations from API succesfully!")
     r = r.json()
     stations = [Radio(radio) for radio in r]
     return stations

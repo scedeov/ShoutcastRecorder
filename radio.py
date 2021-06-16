@@ -11,4 +11,4 @@ class Radio:
         self.current_track = response.get("CurrentTrack")
         self.bitrate = response.get("Bitrate")
         self.r = None
-        self.stop = False
+        self.stop = None

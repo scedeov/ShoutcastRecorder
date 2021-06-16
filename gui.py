@@ -1,15 +1,26 @@
-from radio import Radio
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import tkinter as tk
+import requests
+import logging
+import threading
 import json
 import os
-import requests
-import threading
 
 import shoutcast_api as sapi
+from radio import Radio
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 class Application(tk.Frame):
+
+    NO_RESULTS = "..."
+    SEARCH_BAR_MESSAGE = "search for a radio station"
+
     def __init__(self, master=None, session=None):
         super().__init__(master)
         self.master = master
@@ -18,6 +29,7 @@ class Application(tk.Frame):
         self.subgenres = self.get_subgenres(self.genres[0])
         self.stations = {}
         self.threads = []
+        self.directory = None
         self.session = session
         self.master.resizable(0, 0)
         self.master.title("Radio Recorder for SHOUTcast")
@@ -52,17 +64,30 @@ class Application(tk.Frame):
         self.stations = sapi.get_stations(self.subgenre_var.get(), self.session)
         result = self.search_bar_var.get()
         for station in self.stations:
-            if result in station.name or result == "":
+            if (
+                result == ""
+                or result == self.SEARCH_BAR_MESSAGE
+                or result in station.name.lower()
+            ):
                 self.stations_listbox.insert(tk.END, station.name)
             else:
-                pass
+                self.stations_listbox.insert(tk.END, self.NO_RESULTS)
+                logging.info(f"No results found for {result}...")
+                break
+
+    def search(self):
+        if self.genre_var.get() == "Genre" or self.subgenre_var.get() == "Subgenre":
+            messagebox.showerror(
+                title="Error~! :(", message="You need to select a Genre and a Subgenre."
+            )
+        else:
+            self.update_stations()
 
     def clear(self, event):
         self.search_bar_var.set("")
 
     def save_folder(self):
         self.directory = filedialog.askdirectory()
-        print(self.directory)
 
     def get_station(self, name) -> Radio:
         for station in self.stations:
@@ -74,26 +99,53 @@ class Application(tk.Frame):
             self.stations_listbox.curselection()
         )
         station = self.get_station(current_station_name)
-        content_url = sapi.get_content_url(station.id)
-        listeners = station.listeners
+        content_url = sapi.get_content_url(station.id, self.session)
+        # listeners = station.listeners
 
         filename = self.directory + "/" + station.name + sapi.EXT
-
-        station.r = self.session.get(content_url, stream=True)
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        with open(filename, "wb") as f:
-            print("Recording... ")
-            print(f"Station: {station.name}\nListeners: {listeners}")
-            print("Press Ctrl + C to stop.")
-            while not station.stop:
-                chunk = station.r.iter_content(chunk_size=sapi.CHUNK_SIZE)
-                f.write(next(chunk))
+        try:
+            station.r = self.session.get(content_url, stream=True)
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            with open(filename, "wb") as f:
+                logging.info(f"Recording {station.name}...")
+                while not station.stop:
+                    chunk = station.r.iter_content(chunk_size=sapi.CHUNK_SIZE)
+                    f.write(next(chunk))
+                logging.info(f"Stopped Recording for {station.name}.")
+        except requests.exceptions.MissingSchema:
+            logging.error(f"Invalid URL received for {station.name}")
+        except Exception as e:
+            logging.error(f" Exception Found {e}")
+        finally:
+            station.stop = True
+            logging.info(f"Threads {len(self.threads)}")
+            logging.info("Marked to STOP")
 
     def add_record(self):
+        current_selection = self.stations_listbox.get(
+            self.stations_listbox.curselection()
+        )
+
+        station = self.get_station(current_selection)
+
+        if current_selection == self.NO_RESULTS:
+            logging.info("No results found.")
+            return
+
+        if station.stop != None:
+            logging.info(f"You are currently recording this station {station.name}")
+            return
+
+        if not self.directory:
+            logging.info("You did not select a save folder.")
+            self.save_folder()
+
         thread = threading.Thread(target=self.record)
         self.threads.append(thread)
-        thread.name = self.stations_listbox.get(self.stations_listbox.curselection())
+        thread.name = current_selection
         thread.start()
+        logging.info(f"Thread {thread.name} started")
+        logging.info(f"Threads {len(self.threads)}")
 
     def stop_record(self):
         current_name = self.stations_listbox.get(self.stations_listbox.curselection())
@@ -101,21 +153,19 @@ class Application(tk.Frame):
             if thread.name == current_name:
                 radio = self.get_station(current_name)
                 radio.stop = True
-                print("Stopped While")
-                print("Closing Resopnse")
+                logging.info("Sent signal to stop recording...")
                 radio.r.close()
-                print("Response Closed")
-
-    # def cleanup(self):
-    #     for thread in self.threads:
-    #         thread.join()
+                logging.info(f"Response for {radio.name} closed!")
+                logging.info(f"Threads {len(self.threads)}")
+            else:
+                logging.info(f"Thread does not exist for {current_name}")
 
     def create_widgets(self):
         self.label_search = tk.LabelFrame(self, text="Search")
         self.label_search.pack(pady=10)
 
         self.search_bar_var = tk.StringVar()
-        self.search_bar_var.set("search for a radio station")
+        self.search_bar_var.set(self.SEARCH_BAR_MESSAGE)
 
         self.search_bar = tk.Entry(
             self.label_search,
@@ -142,7 +192,7 @@ class Application(tk.Frame):
         self.genre_menu.pack(side=tk.LEFT)
 
         self.search_btn = tk.Button(
-            self.label_search, text="Search", height=2, command=self.update_stations
+            self.label_search, text="Search", height=2, command=self.search
         )
         self.search_btn.pack(side=tk.RIGHT, padx=10)
 
