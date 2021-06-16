@@ -1,8 +1,9 @@
 import os
 from radio import Radio
 import requests
+from radio import Radio
 
-CHUNK_SIZE = 256
+CHUNK_SIZE = 1024
 EXT = ".mp3"
 
 API_PLAYER = "http://directory.shoutcast.com/Player/"
@@ -69,5 +70,5 @@ def get_stations(subgenre, session):
     r = session.post(api, data=data, headers=HEADERS, timeout=5)
     r.raise_for_status()
     r = r.json()
-    stations = {radio["Name"]: radio["ID"] for radio in r}
+    stations = [Radio(radio) for radio in r]
     return stations

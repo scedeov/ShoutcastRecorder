@@ -1,8 +1,10 @@
+from radio import Radio
 from tkinter import filedialog
 import tkinter as tk
 import json
 import os
 import requests
+import threading
 
 import shoutcast_api as sapi
 
@@ -15,6 +17,7 @@ class Application(tk.Frame):
         self.genres = list(self.get_genres())
         self.subgenres = self.get_subgenres(self.genres[0])
         self.stations = {}
+        self.threads = []
         self.session = session
         self.master.resizable(0, 0)
         self.master.title("Radio Recorder for SHOUTcast")
@@ -49,8 +52,8 @@ class Application(tk.Frame):
         self.stations = sapi.get_stations(self.subgenre_var.get(), self.session)
         result = self.search_bar_var.get()
         for station in self.stations:
-            if result in station or result == "":
-                self.stations_listbox.insert(tk.END, station)
+            if result in station.name or result == "":
+                self.stations_listbox.insert(tk.END, station.name)
             else:
                 pass
 
@@ -61,25 +64,51 @@ class Application(tk.Frame):
         self.directory = filedialog.askdirectory()
         print(self.directory)
 
+    def get_station(self, name) -> Radio:
+        for station in self.stations:
+            if station.name == name:
+                return station
+
     def record(self):
-        station_name = self.stations_listbox.get(self.stations_listbox.curselection())
-        station_id = self.stations[station_name]
-        print(station_name, station_id)
-        content_url = sapi.get_content_url(station_id)
-        radio = sapi.get_radio_info(station_id)
-        radio_name = radio["Station"]["Name"]
-        listeners = radio["Station"]["Listeners"]
+        current_station_name = self.stations_listbox.get(
+            self.stations_listbox.curselection()
+        )
+        station = self.get_station(current_station_name)
+        content_url = sapi.get_content_url(station.id)
+        listeners = station.listeners
 
-        filename = self.directory + "/" + radio_name + sapi.EXT
+        filename = self.directory + "/" + station.name + sapi.EXT
 
-        r = self.session.get(content_url, stream=True)
+        station.r = self.session.get(content_url, stream=True)
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "wb") as f:
             print("Recording... ")
-            print(f"Station: {radio_name}\nListeners: {listeners}")
+            print(f"Station: {station.name}\nListeners: {listeners}")
             print("Press Ctrl + C to stop.")
-            for chunk in r.iter_content(chunk_size=sapi.CHUNK_SIZE):
-                f.write(chunk)
+            while not station.stop:
+                chunk = station.r.iter_content(chunk_size=sapi.CHUNK_SIZE)
+                f.write(next(chunk))
+
+    def add_record(self):
+        thread = threading.Thread(target=self.record)
+        self.threads.append(thread)
+        thread.name = self.stations_listbox.get(self.stations_listbox.curselection())
+        thread.start()
+
+    def stop_record(self):
+        current_name = self.stations_listbox.get(self.stations_listbox.curselection())
+        for thread in self.threads:
+            if thread.name == current_name:
+                radio = self.get_station(current_name)
+                radio.stop = True
+                print("Stopped While")
+                print("Closing Resopnse")
+                radio.r.close()
+                print("Response Closed")
+
+    # def cleanup(self):
+    #     for thread in self.threads:
+    #         thread.join()
 
     def create_widgets(self):
         self.label_search = tk.LabelFrame(self, text="Search")
@@ -134,8 +163,11 @@ class Application(tk.Frame):
 
         self.stations_listbox.pack()
 
-        self.record_btn = tk.Button(self, text="Record", command=self.record)
+        self.record_btn = tk.Button(self, text="Record", command=self.add_record)
         self.record_btn.pack(side=tk.LEFT, pady=10)
+
+        self.stop_btn = tk.Button(self, text="Stop", command=self.stop_record)
+        self.stop_btn.pack(side=tk.LEFT, pady=10)
 
         self.save = tk.Button(self, text="Select Save Folder", command=self.save_folder)
         self.save.pack(side=tk.RIGHT, pady=10)
