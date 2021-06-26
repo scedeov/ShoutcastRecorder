@@ -79,7 +79,7 @@ class Application(tk.Frame):
         if self.genre_var.get() == "Genre" or self.subgenre_var.get() == "Subgenre":
             self.error_var.set("Select Genre\nand\nSubgenre")
         else:
-            self.error_var.set()
+            self.error_var.set("")
             self.update_stations()
 
     def clear(self, event):
