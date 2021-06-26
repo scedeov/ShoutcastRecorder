@@ -222,13 +222,13 @@ class Application(tk.Frame):
         self.stations_listbox.pack()
 
         self.record_btn = tk.Button(self, text="Record", command=self.add_record)
-        self.record_btn.pack(side=tk.LEFT, pady=10)
+        self.record_btn.pack(side=tk.LEFT, pady=10, padx=10)
 
         self.stop_btn = tk.Button(self, text="Stop", command=self.stop_record)
         self.stop_btn.pack(side=tk.LEFT, pady=10)
 
         self.save = tk.Button(self, text="Select Save Folder", command=self.save_folder)
-        self.save.pack(side=tk.RIGHT, pady=10)
+        self.save.pack(side=tk.RIGHT, pady=10, padx=10)
 
 
 if __name__ == "__main__":
