@@ -77,10 +77,9 @@ class Application(tk.Frame):
 
     def search(self):
         if self.genre_var.get() == "Genre" or self.subgenre_var.get() == "Subgenre":
-            messagebox.showerror(
-                title="Error~! :(", message="You need to select a Genre and a Subgenre."
-            )
+            self.error_var.set("Select Genre\nand\nSubgenre")
         else:
+            self.error_var.set()
             self.update_stations()
 
     def clear(self, event):
@@ -190,6 +189,15 @@ class Application(tk.Frame):
             command=lambda _: self.update_subgenres(self.genre_var.get()),
         )
         self.genre_menu.pack(side=tk.LEFT)
+
+        self.error_var = tk.StringVar(self)
+        self.error_label = tk.Label(
+            self.label_search,
+            textvariable=self.error_var,
+            fg="red",
+            font=("Arial", 8),
+        )
+        self.error_label.pack(side=tk.LEFT, anchor="center", padx=10)
 
         self.search_btn = tk.Button(
             self.label_search, text="Search", height=2, command=self.search
