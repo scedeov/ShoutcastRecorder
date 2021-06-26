@@ -4,7 +4,7 @@ from radio import Radio
 import requests
 from radio import Radio
 
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 100000  # 1MB
 EXT = ".mp3"
 
 API_PLAYER = "http://directory.shoutcast.com/Player/"
